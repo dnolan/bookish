@@ -1,36 +1,113 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Bookish - Personal Book Library
 
-## Getting Started
+A modern book management application built with Next.js, React, TypeScript, and Firebase.
 
-First, run the development server:
+## 🏗️ Project Structure
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+```
+bookish/
+├── app/                    # Next.js App Router
+│   ├── globals.css        # Global styles
+│   ├── layout.tsx         # Root layout
+│   └── page.tsx           # Home page (entry point)
+├── components/            # Reusable React components
+│   ├── BookDialog.tsx     # Add/Edit book modal
+│   ├── BookManager.tsx    # Main book management component
+│   ├── BookTable.tsx      # Books list table
+│   └── index.ts           # Component exports
+├── hooks/                 # Custom React hooks
+│   ├── useAuthors.ts      # Authors data management
+│   ├── useBooks.ts        # Books data management
+│   └── index.ts           # Hook exports
+├── lib/                   # Core business logic
+│   ├── db.ts             # Firebase database operations
+│   ├── firebase.ts       # Firebase configuration
+│   ├── types.ts          # TypeScript type definitions
+│   └── index.ts          # Library exports
+├── utils/                 # Utility functions
+│   ├── bookUtils.ts      # Book data transformation utilities
+│   └── index.ts          # Utility exports
+└── public/               # Static assets
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🚀 Features
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- **Add Books**: Create new book entries with title, publication date, and authors
+- **Edit Books**: Update existing book information
+- **Delete Books**: Remove books with confirmation prompt
+- **Author Management**: Autocomplete authors list with ability to add new authors
+- **Data Persistence**: All data stored in Firebase Firestore
+- **Responsive Design**: Works on desktop and mobile devices
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 🛠️ Technology Stack
 
-## Learn More
+- **Framework**: Next.js 14 with App Router
+- **Language**: TypeScript
+- **UI Library**: Material-UI (MUI)
+- **Database**: Firebase Firestore
+- **State Management**: React hooks (useState, useEffect)
+- **Build Tool**: Next.js built-in bundler
 
-To learn more about Next.js, take a look at the following resources:
+## 📦 Architecture Principles
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Component Structure
+- **BookManager**: Main container component that orchestrates all book operations
+- **BookTable**: Displays books in a table format with actions
+- **BookDialog**: Modal form for adding and editing books
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Custom Hooks
+- **useBooks**: Manages book state and operations (CRUD)
+- **useAuthors**: Manages author data and operations
 
-## Deploy on Vercel
+### Data Layer
+- **lib/db.ts**: Centralized database operations with Firebase
+- **lib/types.ts**: TypeScript interfaces for type safety
+- **utils/bookUtils.ts**: Data transformation and validation utilities
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Key Design Patterns
+- **Separation of Concerns**: UI, business logic, and data access are separated
+- **Custom Hooks**: Encapsulate state logic for reusability
+- **Component Composition**: Small, focused components that compose together
+- **Props Interface**: TypeScript interfaces for component props
+- **Error Boundaries**: Proper error handling throughout the application
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 🔧 Setup & Development
+
+1. Install dependencies:
+```bash
+npm install
+```
+
+2. Configure Firebase:
+   - Update `lib/firebase.ts` with your Firebase configuration
+
+3. Run development server:
+```bash
+npm run dev
+```
+
+4. Open [http://localhost:3000](http://localhost:3000) in your browser
+
+## 📝 Code Standards
+
+- **TypeScript**: Strict typing throughout the application
+- **React Best Practices**: Functional components with hooks
+- **Clean Code**: Meaningful names, single responsibility principle
+- **Error Handling**: Proper try-catch blocks and user feedback
+- **Performance**: Efficient re-renders and data fetching
+
+## 🔮 Future Enhancements
+
+- Book cover image uploads
+- Advanced search and filtering
+- Reading progress tracking
+- Book recommendations
+- Export/import functionality
+- Social features (reviews, sharing)
+
+## 🤝 Contributing
+
+1. Follow the existing code structure and patterns
+2. Add TypeScript types for new features
+3. Include error handling for new operations
+4. Update documentation for significant changes

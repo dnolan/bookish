@@ -1,4 +1,3 @@
-
 import { initializeApp } from "firebase/app";
 import { firebaseConfig } from "./firebase";
 import { getFirestore, collection, addDoc, getDoc, updateDoc, deleteDoc, doc, getDocs, query, where } from "firebase/firestore";
@@ -12,7 +11,7 @@ const authorCollection = "authors";
   return getFirestore(app);
 }
 
-async function addBook(book: Book) {
+async function addBook(book: Omit<Book, 'id'>) {
   const db = await initDb();
   try {
     // First, add the authors to the authors collection
@@ -89,7 +88,7 @@ async function addAuthor(authorName: string): Promise<string> {
   if (!querySnapshot.empty) {
     // Author already exists, return existing ID
     return querySnapshot.docs[0].id;
-  }
+  } 
   
   // Add new author
   try {
