@@ -1,7 +1,7 @@
 "use client";
 
 import { Book } from "@/lib/types";
-import { addBook, getBooks, getAuthorNames, updateBook } from "../lib/db";
+import { addBook, getBooks, getAuthorNames, updateBook, deleteBook } from "../lib/db";
 import Button from "@mui/material/Button";
 import TextField from "@mui/material/TextField";
 import Table from '@mui/material/Table';
@@ -57,6 +57,30 @@ export default function Home() {
     setDialogOpen(false);
     setCurrentBook(null);
     setSelectedAuthors([]);
+  };
+
+  const handleDelete = async (book: Book) => {
+    const confirmed = window.confirm(`Are you sure you want to delete "${book.title}"? This action cannot be undone.`);
+    
+    if (confirmed) {
+      try {
+        await deleteBook(book.id);
+        
+        // Refresh the data after deleting
+        const [fetchedBooks, fetchedAuthors] = await Promise.all([
+          getBooks(),
+          getAuthorNames()
+        ]);
+        
+        setBooks(fetchedBooks);
+        setAuthors(fetchedAuthors);
+        
+        console.log("Book deleted successfully");
+      } catch (e) {
+        console.error("Error deleting book: ", e);
+        alert("Failed to delete the book. Please try again.");
+      }
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -213,13 +237,23 @@ export default function Home() {
                 </TableCell>
                 <TableCell>{book.dateAdded}</TableCell>
                 <TableCell>
-                  <Button 
-                    variant="contained" 
-                    size="small" 
-                    onClick={() => handleOpenEditDialog(book)}
-                  >
-                    Edit
-                  </Button>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <Button 
+                      variant="contained" 
+                      size="small" 
+                      onClick={() => handleOpenEditDialog(book)}
+                    >
+                      Edit
+                    </Button>
+                    <Button 
+                      variant="outlined" 
+                      size="small" 
+                      color="error"
+                      onClick={() => handleDelete(book)}
+                    >
+                      Delete
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}

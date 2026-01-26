@@ -1,7 +1,7 @@
 
 import { initializeApp } from "firebase/app";
 import { firebaseConfig } from "./firebase";
-import { getFirestore, collection, addDoc, getDoc, updateDoc, doc, getDocs, query, where } from "firebase/firestore";
+import { getFirestore, collection, addDoc, getDoc, updateDoc, deleteDoc, doc, getDocs, query, where } from "firebase/firestore";
 import { Book, Author } from "./types.js";
 
 
@@ -115,4 +115,17 @@ async function addAuthors(authorNames: string[]): Promise<void> {
   await Promise.all(promises.filter(Boolean));
 }
 
-export { addBook, getBook, updateBook, getBooks, getAuthorNames, addAuthor, addAuthors };
+async function deleteBook(bookId: string): Promise<void> {
+  const db = await initDb();
+  const docRef = doc(collection(db, bookCollection), bookId);
+
+  try {
+    await deleteDoc(docRef);
+    console.log("Document deleted with ID: ", bookId);
+  } catch (e) {
+    console.error("Error deleting document: ", e);
+    throw e;
+  }
+}
+
+export { addBook, getBook, updateBook, deleteBook, getBooks, getAuthorNames, addAuthor, addAuthors };
