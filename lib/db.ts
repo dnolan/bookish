@@ -2,10 +2,9 @@ import { initializeApp } from "firebase/app";
 import { firebaseConfig } from "./firebase";
 import { getFirestore, collection, addDoc, getDoc, updateDoc, deleteDoc, doc, getDocs, query, where } from "firebase/firestore";
 import { Book, Author } from "./types.js";
-
-
 const bookCollection = "books";
 const authorCollection = "authors";
+import defaultGenres from "./defaultGenres.json";
 const genreCollection = "genres";
 
  async function initDb() {
@@ -137,8 +136,22 @@ async function deleteBook(bookId: string): Promise<void> {
 async function getGenreNames(): Promise<string[]> {
   const db = await initDb();
   const querySnapshot = await getDocs(collection(db, genreCollection));
-  const genres: string[] = [];
   
+  // If collection is empty, populate with default genres
+  if (querySnapshot.empty) {
+    console.log("Genre collection is empty, populating with default genres...");
+    await addGenres(defaultGenres);
+    // Fetch again after populating
+    const newQuerySnapshot = await getDocs(collection(db, genreCollection));
+    const genres: string[] = [];
+    newQuerySnapshot.forEach((doc) => {
+      const genre = doc.data() as { name: string; dateAdded: string };
+      genres.push(genre.name);
+    });
+    return genres.sort();
+  }
+  
+  const genres: string[] = [];
   querySnapshot.forEach((doc) => {
     const genre = doc.data() as { name: string; dateAdded: string };
     genres.push(genre.name);
