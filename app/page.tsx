@@ -42,14 +42,10 @@ export default function Home() {
     const bookName = formData.get('bookName');
     const datePublished = formData.get('datePublished');
 
-    if (!bookName) {
-
-    }
-
     try {
       const docRef = await addBook({
         id: "",
-        title: bookName,
+        title: bookName as string,
         datePublished: datePublished as string,
         dateAdded: new Date().toISOString(),
         authors: selectedAuthors,
@@ -127,6 +123,7 @@ export default function Home() {
           <TableHead>
             <TableRow>
               <TableCell>Title</TableCell>
+              <TableCell>Authors</TableCell>
               <TableCell>Date Added</TableCell>
               <TableCell>Actions</TableCell>
             </TableRow>
@@ -135,6 +132,17 @@ export default function Home() {
             {books.map((book) => (
               <TableRow key={book.id}>
                 <TableCell>{book.title}</TableCell>
+                <TableCell>
+                  {book.authors && book.authors.length > 0 ? (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                      {book.authors.map((author, index) => (
+                        <Chip key={index} label={author} size="small" variant="outlined" />
+                      ))}
+                    </div>
+                  ) : (
+                    <em>No authors</em>
+                  )}
+                </TableCell>
                 <TableCell>{book.dateAdded}</TableCell>
                 <TableCell><Button variant="contained" size="small">Edit</Button></TableCell>
               </TableRow>
