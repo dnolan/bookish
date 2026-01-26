@@ -33,6 +33,16 @@ export function BookTable({ books, onEdit, onDelete, loading }: BookTableProps) 
     }
   };
 
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString();
+  };
+
+  const formatDateTime = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleString();
+  };
+
   if (loading) {
     return <div>Loading books...</div>;
   }
@@ -86,7 +96,11 @@ export function BookTable({ books, onEdit, onDelete, loading }: BookTableProps) 
                   <em>No genres</em>
                 )}
               </TableCell>
-              <TableCell>{book.dateAdded}</TableCell>
+              <TableCell>
+                <span title={formatDateTime(book.dateAdded.toString())}>
+                  {formatDate(book.dateAdded.toString())}
+                </span>
+              </TableCell>
               <TableCell>
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <Button 
