@@ -1,7 +1,7 @@
 "use client";
 
 import { Book } from "@/lib/types";
-import { addBook, getBooks, getAuthorNames } from "../lib/db";
+import { addBook, getBooks, getAuthorNames, updateBook } from "../lib/db";
 import Button from "@mui/material/Button";
 import TextField from "@mui/material/TextField";
 import Table from '@mui/material/Table';
@@ -59,10 +59,10 @@ export default function Home() {
     setSelectedAuthors([]);
   };
 
-  const addDocument = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 
     e.preventDefault();
-    console.log("Adding document...");
+    console.log(isEditMode ? "Updating document..." : "Adding document...");
 
 
     const formData = new FormData(e.target as HTMLFormElement);
@@ -70,17 +70,35 @@ export default function Home() {
     const datePublished = formData.get('datePublished');
 
     try {
-      const docRef = await addBook({
-        id: "",
-        title: bookName as string,
-        datePublished: datePublished as string,
-        dateAdded: new Date().toISOString(),
-        authors: selectedAuthors,
-        genres: [],
-        description: "",
-        coverImageUrl: "",
-        pageCount: 0
-      });
+      if (isEditMode && currentBook) {
+        // Update existing book
+        await updateBook(currentBook.id, {
+          title: bookName as string,
+          datePublished: datePublished as string,
+          authors: selectedAuthors,
+          // Keep existing values for other fields
+          dateAdded: currentBook.dateAdded,
+          genres: currentBook.genres,
+          description: currentBook.description,
+          coverImageUrl: currentBook.coverImageUrl,
+          pageCount: currentBook.pageCount
+        });
+        console.log("Document updated with ID: ", currentBook.id);
+      } else {
+        // Add new book
+        const docRef = await addBook({
+          id: "",
+          title: bookName as string,
+          datePublished: datePublished as string,
+          dateAdded: new Date().toISOString(),
+          authors: selectedAuthors,
+          genres: [],
+          description: "",
+          coverImageUrl: "",
+          pageCount: 0
+        });
+        console.log("Document added with ID: ", docRef);
+      }
       
       // Refresh the data after adding a new book
       const [fetchedBooks, fetchedAuthors] = await Promise.all([
@@ -113,7 +131,7 @@ export default function Home() {
         <DialogTitle>
           {isEditMode ? 'Edit Book' : 'Add New Book'}
         </DialogTitle>
-        <form onSubmit={(e) => addDocument(e)}>
+        <form onSubmit={(e) => handleSubmit(e)}>
           <DialogContent>
             <TextField 
               name="bookName" 
