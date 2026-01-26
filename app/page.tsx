@@ -1,7 +1,7 @@
 "use client";
 
 import { Book } from "@/lib/types";
-import { addBook, getBooks } from "../lib/db";
+import { addBook, getBooks, getAuthorNames } from "../lib/db";
 import Button from "@mui/material/Button";
 import TextField from "@mui/material/TextField";
 import Table from '@mui/material/Table';
@@ -10,20 +10,26 @@ import TableCell from '@mui/material/TableCell';
 import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
+import Autocomplete from '@mui/material/Autocomplete';
+import Chip from '@mui/material/Chip';
 import { useEffect, useState } from "react";
-import { Tab } from "@mui/material";
-
 
 export default function Home() {
 
   const [books, setBooks] = useState<Book[]>([]);
+  const [authors, setAuthors] = useState<string[]>([]);
+  const [selectedAuthors, setSelectedAuthors] = useState<string[]>([]);
 
   useEffect(() => {
-    async function fetchBooks() {
-      const fetchedBooks = await getBooks();
+    async function fetchData() {
+      const [fetchedBooks, fetchedAuthors] = await Promise.all([
+        getBooks(),
+        getAuthorNames()
+      ]);
       setBooks(fetchedBooks);
+      setAuthors(fetchedAuthors);
     }
-    fetchBooks();
+    fetchData();
   }, []);
 
   const addDocument = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -34,28 +40,37 @@ export default function Home() {
 
     const formData = new FormData(e.target as HTMLFormElement);
     const bookName = formData.get('bookName');
+    const datePublished = formData.get('datePublished');
+
+    if (!bookName) {
+
+    }
 
     try {
       const docRef = await addBook({
         id: "",
         title: bookName,
-        datePublished: "",
+        datePublished: datePublished as string,
         dateAdded: new Date().toISOString(),
-        authors: [],
+        authors: selectedAuthors,
         genres: [],
         description: "",
         coverImageUrl: "",
         pageCount: 0
       });
-
-      console.log("Document written with ID: ", docRef);
       
-      // Refresh the book list after adding a new book
-      const fetchedBooks = await getBooks();
+      // Refresh the data after adding a new book
+      const [fetchedBooks, fetchedAuthors] = await Promise.all([
+        getBooks(),
+        getAuthorNames()
+      ]);
+      
       setBooks(fetchedBooks);
+      setAuthors(fetchedAuthors);
       
       // Clear the form
       (e.target as HTMLFormElement).reset();
+      setSelectedAuthors([]);
     } catch (e) {
       console.error("Error adding document: ", e);
     }
@@ -66,8 +81,43 @@ export default function Home() {
       <p>Hi There!</p>
 
       <form onSubmit={(e) => addDocument(e)}>
+        <TextField 
+          name="bookName" 
+          label="Book Title" 
+          fullWidth 
+          margin="normal"
+          required
+        />
 
-        <TextField name="bookName"></TextField>
+        <TextField name="datePublished" 
+          label="Date Published" fullWidth margin="normal" type="date" 
+          InputLabelProps={{ shrink: true }} />
+        
+        <Autocomplete
+          multiple
+          freeSolo
+          options={authors}
+          value={selectedAuthors}
+          onChange={(event, newValue) => {
+            setSelectedAuthors(newValue);
+          }}
+          renderValue={(value, getTagProps) =>
+            value.map((option, index) => {
+              let tagProps = getTagProps({ index });
+              return <Chip variant="outlined" label={option} {...tagProps} />;
+            })
+          }
+          renderInput={(params) => (
+            <TextField
+              {...params}
+              label="Authors"
+              placeholder="Select or add authors"
+              margin="normal"
+              fullWidth
+            />
+          )}
+          sx={{ mb: 2 }}
+        />
 
         <Button type="submit" variant="contained">Add</Button>
       </form>

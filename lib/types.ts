@@ -10,6 +10,12 @@ type Book = {
   pageCount: number;
 }
 
+type Author = {
+  id: string;
+  name: string;
+  dateAdded: string;
+}
+
 type User = {
   id: string;
   name: string;
@@ -24,4 +30,4 @@ type UserBookSummary = {
   dateAddedToReadingList: string; 
 }
 
-export type { Book, User, UserBookSummary };
+export type { Book, Author, User, UserBookSummary };
