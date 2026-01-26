@@ -6,6 +6,8 @@ import { Book, Author } from "./types.js";
 
 const bookCollection = "books";
 const authorCollection = "authors";
+const genreCollection = "genres";
+
  async function initDb() {
   const app = initializeApp(await firebaseConfig());
   return getFirestore(app);
@@ -17,6 +19,11 @@ async function addBook(book: Omit<Book, 'id'>) {
     // First, add the authors to the authors collection
     if (book.authors && book.authors.length > 0) {
       await addAuthors(book.authors);
+    }
+    
+    // Add genres to the genres collection
+    if (book.genres && book.genres.length > 0) {
+      await addGenres(book.genres);
     }
     
     // Then add the book
@@ -127,4 +134,53 @@ async function deleteBook(bookId: string): Promise<void> {
   }
 }
 
-export { addBook, getBook, updateBook, deleteBook, getBooks, getAuthorNames, addAuthor, addAuthors };
+async function getGenreNames(): Promise<string[]> {
+  const db = await initDb();
+  const querySnapshot = await getDocs(collection(db, genreCollection));
+  const genres: string[] = [];
+  
+  querySnapshot.forEach((doc) => {
+    const genre = doc.data() as { name: string; dateAdded: string };
+    genres.push(genre.name);
+  });
+  
+  return genres.sort();
+}
+
+async function addGenre(genreName: string): Promise<string> {
+  const db = await initDb();
+  
+  // Check if genre already exists
+  const q = query(collection(db, genreCollection), where("name", "==", genreName));
+  const querySnapshot = await getDocs(q);
+  
+  if (!querySnapshot.empty) {
+    // Genre already exists, return existing ID
+    return querySnapshot.docs[0].id;
+  } 
+  
+  // Add new genre
+  try {
+    const docRef = await addDoc(collection(db, genreCollection), {
+      name: genreName,
+      dateAdded: new Date().toISOString()
+    });
+    console.log("Genre written with ID: ", docRef.id);
+    return docRef.id;
+  } catch (e) {
+    console.error("Error adding genre: ", e);
+    throw e;
+  }
+}
+
+async function addGenres(genreNames: string[]): Promise<void> {
+  const promises = genreNames.map(name => {
+    if (name.trim()) {
+      return addGenre(name.trim());
+    }
+  });
+  
+  await Promise.all(promises.filter(Boolean));
+}
+
+export { addBook, getBook, updateBook, deleteBook, getBooks, getAuthorNames, addAuthor, addAuthors, getGenreNames, addGenre, addGenres };

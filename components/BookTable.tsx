@@ -44,6 +44,7 @@ export function BookTable({ books, onEdit, onDelete, loading }: BookTableProps) 
           <TableRow>
             <TableCell>Title</TableCell>
             <TableCell>Authors</TableCell>
+            <TableCell>Genres</TableCell>
             <TableCell>Date Added</TableCell>
             <TableCell>Actions</TableCell>
           </TableRow>
@@ -66,6 +67,23 @@ export function BookTable({ books, onEdit, onDelete, loading }: BookTableProps) 
                   </div>
                 ) : (
                   <em>No authors</em>
+                )}
+              </TableCell>
+              <TableCell>
+                {book.genres && book.genres.length > 0 ? (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                    {book.genres.map((genre, index) => (
+                      <Chip 
+                        key={index} 
+                        label={genre} 
+                        size="small" 
+                        variant="outlined"
+                        color="primary"
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <em>No genres</em>
                 )}
               </TableCell>
               <TableCell>{book.dateAdded}</TableCell>

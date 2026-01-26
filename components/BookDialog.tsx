@@ -15,6 +15,7 @@ interface BookDialogProps {
   open: boolean;
   book?: Book | null;
   authors: string[];
+  genres: string[];
   onClose: () => void;
   onSubmit: (bookData: any) => Promise<void>;
 }
@@ -23,18 +24,22 @@ export function BookDialog({
   open, 
   book, 
   authors, 
+  genres,
   onClose, 
   onSubmit 
 }: BookDialogProps) {
   const [selectedAuthors, setSelectedAuthors] = useState<string[]>([]);
+  const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const isEditMode = !!book;
 
   useEffect(() => {
     if (book) {
       setSelectedAuthors(book.authors || []);
+      setSelectedGenres(book.genres || []);
     } else {
       setSelectedAuthors([]);
+      setSelectedGenres([]);
     }
   }, [book]);
 
@@ -53,9 +58,9 @@ export function BookDialog({
           title: bookName,
           datePublished,
           authors: selectedAuthors,
+          genres: selectedGenres,
           // Keep existing values for other fields
           dateAdded: book.dateAdded,
-          genres: book.genres,
           description: book.description,
           coverImageUrl: book.coverImageUrl,
           pageCount: book.pageCount,
@@ -65,8 +70,8 @@ export function BookDialog({
           title: bookName,
           datePublished,
           authors: selectedAuthors,
+          genres: selectedGenres,
           dateAdded: new Date().toISOString(),
-          genres: [],
           description: '',
           coverImageUrl: '',
           pageCount: 0,
@@ -83,6 +88,7 @@ export function BookDialog({
 
   const handleClose = () => {
     setSelectedAuthors([]);
+    setSelectedGenres([]);
     onClose();
   };
 
@@ -130,6 +136,31 @@ export function BookDialog({
                 {...params}
                 label="Authors"
                 placeholder="Select or add authors"
+                margin="normal"
+                fullWidth
+              />
+            )}
+            sx={{ mt: 2 }}
+          />
+
+          <Autocomplete
+            multiple
+            freeSolo
+            options={genres}
+            value={selectedGenres}
+            onChange={(event, newValue) => {
+              setSelectedGenres(newValue);
+            }}
+            renderTags={(value, getTagProps) =>
+              value.map((option, index) => (
+                <Chip variant="outlined" label={option} {...getTagProps({ index })} />
+              ))
+            }
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Genres"
+                placeholder="Select or add genres"
                 margin="normal"
                 fullWidth
               />
