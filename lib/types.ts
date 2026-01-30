@@ -8,6 +8,7 @@ type Book = {
   description: string;
   coverImageUrl: string;
   pageCount: number;
+  isbn10?: string;
 }
 
 type Author = {

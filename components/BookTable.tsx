@@ -53,6 +53,7 @@ export function BookTable({ books, onEdit, onDelete, loading }: BookTableProps) 
         <TableHead>
           <TableRow>
             <TableCell>Title</TableCell>
+            <TableCell>Cover</TableCell>
             <TableCell>Authors</TableCell>
             <TableCell>Genres</TableCell>
             <TableCell>Date Added</TableCell>
@@ -63,6 +64,20 @@ export function BookTable({ books, onEdit, onDelete, loading }: BookTableProps) 
           {books.map((book) => (
             <TableRow key={book.id}>
               <TableCell>{book.title}</TableCell>
+              <TableCell>
+                {book.isbn10 ? (
+                  <img
+                    src={`https://covers.openlibrary.org/b/isbn/${book.isbn10}-S.jpg`}
+                    alt=""
+                    width={32}
+                    height={48}
+                    style={{ objectFit: 'cover', borderRadius: 4 }}
+                    loading="lazy"
+                  />
+                ) : (
+                  <em>No cover</em>
+                )}
+              </TableCell>
               <TableCell>
                 {book.authors && book.authors.length > 0 ? (
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>

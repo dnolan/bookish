@@ -8,6 +8,7 @@ import {
   Button,
   Autocomplete,
   Chip,
+  CircularProgress,
 } from '@mui/material';
 import { Book } from '@/lib/types';
 
@@ -28,6 +29,23 @@ export function BookDialog({
   onClose, 
   onSubmit 
 }: BookDialogProps) {
+  type OpenLibraryResult = {
+    key: string;
+    title: string;
+    authors: string[];
+    firstPublishYear?: number;
+    isbn10?: string | null;
+    coverUrl?: string | null;
+  };
+
+  const [bookTitleInput, setBookTitleInput] = useState('');
+  const [bookTitleValue, setBookTitleValue] = useState<OpenLibraryResult | string | null>(null);
+  const [titleOptions, setTitleOptions] = useState<OpenLibraryResult[]>([]);
+  const [titleLoading, setTitleLoading] = useState(false);
+  const [datePublishedValue, setDatePublishedValue] = useState('');
+  const [selectedOpenLibraryKey, setSelectedOpenLibraryKey] = useState<string | null>(null);
+  const [isbn10Value, setIsbn10Value] = useState('');
+  const [isbn10Loading, setIsbn10Loading] = useState(false);
   const [selectedAuthors, setSelectedAuthors] = useState<string[]>([]);
   const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
@@ -35,13 +53,99 @@ export function BookDialog({
 
   useEffect(() => {
     if (book) {
+      setBookTitleInput(book.title || '');
+      setBookTitleValue(book.title || null);
+      setDatePublishedValue((book.datePublished as string) || '');
+      setIsbn10Value(book.isbn10 || '');
+      setSelectedOpenLibraryKey(null);
       setSelectedAuthors(book.authors || []);
       setSelectedGenres(book.genres || []);
     } else {
+      setBookTitleInput('');
+      setBookTitleValue(null);
+      setDatePublishedValue('');
+      setIsbn10Value('');
+      setSelectedOpenLibraryKey(null);
       setSelectedAuthors([]);
       setSelectedGenres([]);
     }
   }, [book]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    const query = bookTitleInput.trim();
+    if (query.length < 2) {
+      setTitleOptions([]);
+      setTitleLoading(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    setTitleLoading(true);
+
+    const timer = setTimeout(async () => {
+      try {
+        const response = await fetch(`/api/openlibrary/search?q=${encodeURIComponent(query)}` , {
+          signal: controller.signal,
+        });
+        if (!response.ok) {
+          throw new Error('Search request failed');
+        }
+        const data = await response.json();
+        setTitleOptions(Array.isArray(data?.results) ? data.results : []);
+      } catch (error: any) {
+        if (error?.name !== 'AbortError') {
+          console.error('Open Library search failed:', error);
+        }
+      } finally {
+        setTitleLoading(false);
+      }
+    }, 300);
+
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [bookTitleInput, open]);
+
+  useEffect(() => {
+    if (!selectedOpenLibraryKey) {
+      setIsbn10Value('');
+      return;
+    }
+
+    const controller = new AbortController();
+    setIsbn10Loading(true);
+
+    const loadIsbn = async () => {
+      try {
+        const response = await fetch(
+          `/api/openlibrary/details?key=${encodeURIComponent(selectedOpenLibraryKey)}`,
+          { signal: controller.signal }
+        );
+        if (!response.ok) {
+          throw new Error('Detail request failed');
+        }
+        const data = await response.json();
+        setIsbn10Value(data?.isbn10 || '');
+      } catch (error: any) {
+        if (error?.name !== 'AbortError') {
+          console.error('Open Library detail failed:', error);
+        }
+      } finally {
+        setIsbn10Loading(false);
+      }
+    };
+
+    loadIsbn();
+
+    return () => {
+      controller.abort();
+    };
+  }, [selectedOpenLibraryKey]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -59,6 +163,7 @@ export function BookDialog({
           datePublished,
           authors: selectedAuthors,
           genres: selectedGenres,
+          isbn10: isbn10Value,
           // Keep existing values for other fields
           dateAdded: book.dateAdded,
           description: book.description,
@@ -71,6 +176,7 @@ export function BookDialog({
           datePublished,
           authors: selectedAuthors,
           genres: selectedGenres,
+          isbn10: isbn10Value,
           dateAdded: new Date().toISOString(),
           description: '',
           coverImageUrl: '',
@@ -87,6 +193,12 @@ export function BookDialog({
   };
 
   const handleClose = () => {
+    setBookTitleInput('');
+    setBookTitleValue(null);
+    setTitleOptions([]);
+    setDatePublishedValue('');
+    setSelectedOpenLibraryKey(null);
+    setIsbn10Value('');
     setSelectedAuthors([]);
     setSelectedGenres([]);
     onClose();
@@ -99,13 +211,85 @@ export function BookDialog({
       </DialogTitle>
       <form onSubmit={handleSubmit}>
         <DialogContent>
-          <TextField 
-            name="bookName" 
-            label="Book Title" 
-            fullWidth 
-            margin="normal"
-            required
-            defaultValue={book?.title || ''}
+          <Autocomplete
+            freeSolo
+            options={titleOptions}
+            filterOptions={(options) => options}
+            getOptionLabel={(option) =>
+              typeof option === 'string' ? option : option.title
+            }
+            value={bookTitleValue}
+            inputValue={bookTitleInput}
+            loading={titleLoading}
+            onInputChange={(_, newInputValue) => {
+              setBookTitleInput(newInputValue);
+              if (!newInputValue) {
+                setBookTitleValue(null);
+              }
+            }}
+            onChange={(_, newValue) => {
+              setBookTitleValue(newValue);
+              if (typeof newValue === 'string') {
+                setBookTitleInput(newValue);
+                setSelectedOpenLibraryKey(null);
+                return;
+              }
+              if (newValue) {
+                setBookTitleInput(newValue.title);
+                if (newValue.authors?.length) {
+                  setSelectedAuthors(Array.from(new Set(newValue.authors)));
+                }
+                if (newValue.firstPublishYear) {
+                  setDatePublishedValue(`${newValue.firstPublishYear}-01-01`);
+                }
+                setSelectedOpenLibraryKey(newValue.key);
+              }
+            }}
+            renderOption={(props, option) => (
+              <li {...props}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  {option.coverUrl ? (
+                    <img
+                      src={option.coverUrl}
+                      alt=""
+                      width={32}
+                      height={48}
+                      style={{ objectFit: 'cover', borderRadius: 4 }}
+                      loading="lazy"
+                    />
+                  ) : null}
+                  <div>
+                    <div>{option.title}</div>
+                    {option.authors?.length ? (
+                      <div style={{ fontSize: 12, opacity: 0.7 }}>
+                        {option.authors.join(', ')}
+                        {option.firstPublishYear ? ` • ${option.firstPublishYear}` : ''}
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              </li>
+            )}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                name="bookName"
+                label="Book Title"
+                fullWidth
+                margin="normal"
+                required
+                helperText="Start typing to search Open Library"
+                InputProps={{
+                  ...params.InputProps,
+                  endAdornment: (
+                    <>
+                      {titleLoading ? <CircularProgress color="inherit" size={18} /> : null}
+                      {params.InputProps.endAdornment}
+                    </>
+                  ),
+                }}
+              />
+            )}
           />
 
           <TextField 
@@ -115,7 +299,18 @@ export function BookDialog({
             margin="normal" 
             type="date" 
             InputLabelProps={{ shrink: true }}
-            defaultValue={book?.datePublished || ''}
+            value={datePublishedValue}
+            onChange={(event) => setDatePublishedValue(event.target.value)}
+          />
+
+          <TextField 
+            name="isbn10" 
+            label="ISBN-10" 
+            fullWidth 
+            margin="normal" 
+            value={isbn10Value}
+            onChange={(event) => setIsbn10Value(event.target.value)}
+            helperText={isbn10Loading ? 'Looking up ISBN-10…' : 'Auto-filled from Open Library'}
           />
           
           <Autocomplete
@@ -123,7 +318,7 @@ export function BookDialog({
             freeSolo
             options={authors}
             value={selectedAuthors}
-            onChange={(event, newValue) => {
+            onChange={(_, newValue) => {
               setSelectedAuthors(newValue);
             }}
             renderTags={(value, getTagProps) =>
@@ -148,7 +343,7 @@ export function BookDialog({
             freeSolo
             options={genres}
             value={selectedGenres}
-            onChange={(event, newValue) => {
+            onChange={(_, newValue) => {
               setSelectedGenres(newValue);
             }}
             renderTags={(value, getTagProps) =>
