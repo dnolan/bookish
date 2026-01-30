@@ -48,7 +48,9 @@ export function BookDialog({
   const [isbn10Loading, setIsbn10Loading] = useState(false);
   const [selectedAuthors, setSelectedAuthors] = useState<string[]>([]);
   const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
+  const [genreSuggestionLoading, setGenreSuggestionLoading] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [bookSelected, setBookSelected] = useState(false);
   const isEditMode = !!book;
 
   useEffect(() => {
@@ -60,6 +62,7 @@ export function BookDialog({
       setSelectedOpenLibraryKey(null);
       setSelectedAuthors(book.authors || []);
       setSelectedGenres(book.genres || []);
+      setBookSelected(false);
     } else {
       setBookTitleInput('');
       setBookTitleValue(null);
@@ -68,6 +71,7 @@ export function BookDialog({
       setSelectedOpenLibraryKey(null);
       setSelectedAuthors([]);
       setSelectedGenres([]);
+      setBookSelected(false);
     }
   }, [book]);
 
@@ -147,6 +151,49 @@ export function BookDialog({
     };
   }, [selectedOpenLibraryKey]);
 
+  useEffect(() => {
+    if (!bookSelected) {
+      return;
+    }
+
+    const controller = new AbortController();
+    setGenreSuggestionLoading(true);
+
+    const loadGenres = async () => {
+      try {
+        const response = await fetch('/api/suggest-genres', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: bookTitleInput,
+            authors: selectedAuthors,
+          }),
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          throw new Error('Genre suggestion request failed');
+        }
+
+        const data = await response.json();
+        const suggestedGenres = Array.isArray(data?.genres) ? data.genres : [];
+        setSelectedGenres(suggestedGenres);
+      } catch (error: any) {
+        if (error?.name !== 'AbortError') {
+          console.error('Genre suggestion failed:', error);
+        }
+      } finally {
+        setGenreSuggestionLoading(false);
+      }
+    };
+
+    loadGenres();
+
+    return () => {
+      controller.abort();
+    };
+  }, [bookSelected]);
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
@@ -201,6 +248,7 @@ export function BookDialog({
     setIsbn10Value('');
     setSelectedAuthors([]);
     setSelectedGenres([]);
+    setBookSelected(false);
     onClose();
   };
 
@@ -232,6 +280,7 @@ export function BookDialog({
               if (typeof newValue === 'string') {
                 setBookTitleInput(newValue);
                 setSelectedOpenLibraryKey(null);
+                setBookSelected(false);
                 return;
               }
               if (newValue) {
@@ -243,6 +292,7 @@ export function BookDialog({
                   setDatePublishedValue(`${newValue.firstPublishYear}-01-01`);
                 }
                 setSelectedOpenLibraryKey(newValue.key);
+                setBookSelected(true);
               }
             }}
             renderOption={(props, option) => (
@@ -301,6 +351,7 @@ export function BookDialog({
             InputLabelProps={{ shrink: true }}
             value={datePublishedValue}
             onChange={(event) => setDatePublishedValue(event.target.value)}
+            disabled={bookSelected && genreSuggestionLoading}
           />
 
           <TextField 
@@ -311,6 +362,7 @@ export function BookDialog({
             value={isbn10Value}
             onChange={(event) => setIsbn10Value(event.target.value)}
             helperText={isbn10Loading ? 'Looking up ISBN-10…' : 'Auto-filled from Open Library'}
+            disabled={bookSelected && genreSuggestionLoading}
           />
           
           <Autocomplete
@@ -321,6 +373,7 @@ export function BookDialog({
             onChange={(_, newValue) => {
               setSelectedAuthors(newValue);
             }}
+            disabled={bookSelected && genreSuggestionLoading}
             renderTags={(value, getTagProps) =>
               value.map((option, index) => (
                 <Chip variant="outlined" label={option} {...getTagProps({ index })} />
@@ -346,6 +399,7 @@ export function BookDialog({
             onChange={(_, newValue) => {
               setSelectedGenres(newValue);
             }}
+            disabled={bookSelected && genreSuggestionLoading}
             renderTags={(value, getTagProps) =>
               value.map((option, index) => (
                 <Chip variant="outlined" label={option} {...getTagProps({ index })} />
@@ -355,7 +409,7 @@ export function BookDialog({
               <TextField
                 {...params}
                 label="Genres"
-                placeholder="Select or add genres"
+                placeholder={genreSuggestionLoading ? "Loading suggestions from AI…" : "Select or add genres"}
                 margin="normal"
                 fullWidth
               />
@@ -364,11 +418,11 @@ export function BookDialog({
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleClose} disabled={loading}>
+          <Button onClick={handleClose} disabled={loading || genreSuggestionLoading}>
             Cancel
           </Button>
-          <Button type="submit" variant="contained" disabled={loading}>
-            {loading ? 'Saving...' : isEditMode ? 'Update' : 'Add'}
+          <Button type="submit" variant="contained" disabled={loading || genreSuggestionLoading}>
+            {genreSuggestionLoading ? 'Loading genres…' : loading ? 'Saving...' : isEditMode ? 'Update' : 'Add'}
           </Button>
         </DialogActions>
       </form>
