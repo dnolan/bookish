@@ -71,6 +71,17 @@ async function getBooks(): Promise<Book[]> {
   return books;
 }
 
+async function getBooksByUserId(userId: string): Promise<Book[]> {
+  const db = await initDb();
+  const q = query(collection(db, bookCollection), where("userId", "==", userId));
+  const querySnapshot = await getDocs(q);
+  const books: Book[] = [];
+  querySnapshot.forEach((doc) => {
+    books.push({ ...doc.data() as Book, id: doc.id });
+  });
+  return books;
+}
+
 async function getAuthorNames(): Promise<string[]> {
   const db = await initDb();
   const querySnapshot = await getDocs(collection(db, authorCollection));
@@ -196,4 +207,4 @@ async function addGenres(genreNames: string[]): Promise<void> {
   await Promise.all(promises.filter(Boolean));
 }
 
-export { addBook, getBook, updateBook, deleteBook, getBooks, getAuthorNames, addAuthor, addAuthors, getGenreNames, addGenre, addGenres };
+export { addBook, getBook, updateBook, deleteBook, getBooks, getBooksByUserId, getAuthorNames, addAuthor, addAuthors, getGenreNames, addGenre, addGenres };

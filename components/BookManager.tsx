@@ -1,13 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { Button } from '@mui/material';
-import { Book } from '@/lib/types';
+import { useState, useEffect } from 'react';
+import { Button, AppBar, Toolbar, Typography, Box } from '@mui/material';
+import { Book, BookFormData } from '@/lib/types';
 import { BookTable } from '@/components/BookTable';
 import { BookDialog } from '@/components/BookDialog';
 import { useBooks } from '@/hooks/useBooks';
 import { useAuthors } from '@/hooks/useAuthors';
 import { useGenres } from '@/hooks/useGenres';
+import { useAuth } from '@/lib/authContext';
 
 export function BookManager() {
+  const { user, logout } = useAuth();
   const { books, loading: booksLoading, createBook, updateBook, deleteBook, fetchBooks } = useBooks();
   const { authors, fetchAuthors } = useAuthors();
   const { genres, fetchGenres } = useGenres();
@@ -15,10 +17,12 @@ export function BookManager() {
   const [currentBook, setCurrentBook] = useState<Book | null>(null);
 
   useEffect(() => {
-    fetchBooks();
-    fetchAuthors();
-    fetchGenres();
-  }, []);
+    if (user?.uid) {
+      fetchBooks();
+      fetchAuthors();
+      fetchGenres();
+    }
+  }, [user?.uid]);
 
   const handleOpenAddDialog = () => {
     setCurrentBook(null);
@@ -35,7 +39,7 @@ export function BookManager() {
     setCurrentBook(null);
   };
 
-  const handleSubmit = async (bookData: any) => {
+  const handleSubmit = async (bookData: BookFormData) => {
     if (currentBook) {
       await updateBook(currentBook.id, bookData);
     } else {
@@ -53,33 +57,46 @@ export function BookManager() {
 
   return (
     <div>
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center', 
-        marginBottom: '20px' 
-      }}>
-        <h1>My Book Library</h1>
-        <Button variant="contained" onClick={handleOpenAddDialog}>
-          Add Book
-        </Button>
-      </div>
+      <AppBar position="static">
+        <Toolbar>
+          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+            Bookish
+          </Typography>
+          <Button color="inherit" onClick={logout}>
+            Logout
+          </Button>
+        </Toolbar>
+      </AppBar>
 
-      <BookTable 
-        books={books}
-        onEdit={handleOpenEditDialog}
-        onDelete={handleDelete}
-        loading={booksLoading}
-      />
+      <Box sx={{ p: 3 }}>
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          marginBottom: '20px' 
+        }}>
+          <h1>My Book Library</h1>
+          <Button variant="contained" onClick={handleOpenAddDialog}>
+            Add Book
+          </Button>
+        </div>
 
-      <BookDialog
-        open={dialogOpen}
-        book={currentBook}
-        authors={authors}
-        genres={genres}
-        onClose={handleCloseDialog}
-        onSubmit={handleSubmit}
-      />
+        <BookTable 
+          books={books}
+          onEdit={handleOpenEditDialog}
+          onDelete={handleDelete}
+          loading={booksLoading}
+        />
+
+        <BookDialog
+          open={dialogOpen}
+          book={currentBook}
+          authors={authors}
+          genres={genres}
+          onClose={handleCloseDialog}
+          onSubmit={handleSubmit}
+        />
+      </Box>
     </div>
   );
 }

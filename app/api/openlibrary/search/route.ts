@@ -22,19 +22,33 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Open Library request failed' }, { status: 502 });
   }
 
-  const data = await response.json();
-  const docs = Array.isArray(data?.docs) ? data.docs : [];
+  type OpenLibraryDoc = {
+    key?: string;
+    title?: string;
+    author_name?: string[];
+    first_publish_year?: number;
+    isbn?: string[];
+  };
 
-  const results = docs.map((doc: any) => {
+  const data: unknown = await response.json();
+  const docs =
+    typeof data === 'object' &&
+    data !== null &&
+    'docs' in data &&
+    Array.isArray((data as { docs?: unknown }).docs)
+      ? ((data as { docs: OpenLibraryDoc[] }).docs ?? [])
+      : [];
+
+  const results = docs.map((doc: OpenLibraryDoc) => {
     const isbns = Array.isArray(doc.isbn) ? doc.isbn : [];
-    const isbn10 = isbns.find((isbn: string) => typeof isbn === 'string' && isbn.length === 10) || null;
+    const isbn10 = isbns.find((isbn) => typeof isbn === 'string' && isbn.length === 10) || null;
     const coverUrl = isbn10 ? `https://covers.openlibrary.org/b/isbn/${isbn10}-S.jpg` : null;
 
     return {
-      key: doc.key as string,
-      title: doc.title as string,
+      key: doc.key ?? '',
+      title: doc.title ?? '',
       authors: Array.isArray(doc.author_name) ? doc.author_name : [],
-      firstPublishYear: doc.first_publish_year as number | undefined,
+      firstPublishYear: doc.first_publish_year,
       isbn10,
       coverUrl,
     };

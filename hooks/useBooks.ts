@@ -1,17 +1,21 @@
 import { useState } from 'react';
-import { Book } from '@/lib/types';
-import { addBook, updateBook, getBooks, getAuthorNames } from '@/lib/db';
+import { Book, BookFormData } from '@/lib/types';
+import { addBook, updateBook, getBooks, getBooksByUserId, getAuthorNames } from '@/lib/db';
+import { useAuth } from '@/lib/authContext';
 
 export function useBooks() {
+  const { user } = useAuth();
   const [books, setBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchBooks = async () => {
+    if (!user?.uid) return;
+    
     setLoading(true);
     setError(null);
     try {
-      const fetchedBooks = await getBooks();
+      const fetchedBooks = await getBooksByUserId(user.uid);
       setBooks(fetchedBooks);
     } catch (err) {
       setError('Failed to fetch books');
@@ -21,10 +25,13 @@ export function useBooks() {
     }
   };
 
-  const createBook = async (bookData: Omit<Book, 'id'>) => {
+  const createBook = async (bookData: BookFormData) => {
+    if (!user?.uid) throw new Error('User not authenticated');
+    
     setError(null);
     try {
-      await addBook(bookData);
+      const bookWithUser = { ...bookData, userId: user.uid };
+      await addBook(bookWithUser);
       await fetchBooks(); // Refresh the list
     } catch (err) {
       setError('Failed to add book');

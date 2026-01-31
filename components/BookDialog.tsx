@@ -10,7 +10,7 @@ import {
   Chip,
   CircularProgress,
 } from '@mui/material';
-import { Book } from '@/lib/types';
+import { Book, BookFormData } from '@/lib/types';
 
 interface BookDialogProps {
   open: boolean;
@@ -18,7 +18,7 @@ interface BookDialogProps {
   authors: string[];
   genres: string[];
   onClose: () => void;
-  onSubmit: (bookData: any) => Promise<void>;
+  onSubmit: (bookData: BookFormData) => Promise<void>;
 }
 
 export function BookDialog({ 
@@ -29,6 +29,11 @@ export function BookDialog({
   onClose, 
   onSubmit 
 }: BookDialogProps) {
+  const isAbortError = (error: unknown) =>
+    typeof error === 'object' &&
+    error !== null &&
+    'name' in error &&
+    (error as { name?: string }).name === 'AbortError';
   type OpenLibraryResult = {
     key: string;
     title: string;
@@ -100,8 +105,8 @@ export function BookDialog({
         }
         const data = await response.json();
         setTitleOptions(Array.isArray(data?.results) ? data.results : []);
-      } catch (error: any) {
-        if (error?.name !== 'AbortError') {
+      } catch (error: unknown) {
+        if (!isAbortError(error)) {
           console.error('Open Library search failed:', error);
         }
       } finally {
@@ -135,8 +140,8 @@ export function BookDialog({
         }
         const data = await response.json();
         setIsbn10Value(data?.isbn10 || '');
-      } catch (error: any) {
-        if (error?.name !== 'AbortError') {
+      } catch (error: unknown) {
+        if (!isAbortError(error)) {
           console.error('Open Library detail failed:', error);
         }
       } finally {
@@ -178,8 +183,8 @@ export function BookDialog({
         const data = await response.json();
         const suggestedGenres = Array.isArray(data?.genres) ? data.genres : [];
         setSelectedGenres(suggestedGenres);
-      } catch (error: any) {
-        if (error?.name !== 'AbortError') {
+      } catch (error: unknown) {
+        if (!isAbortError(error)) {
           console.error('Genre suggestion failed:', error);
         }
       } finally {
@@ -376,7 +381,11 @@ export function BookDialog({
             disabled={bookSelected && genreSuggestionLoading}
             renderTags={(value, getTagProps) =>
               value.map((option, index) => (
-                <Chip variant="outlined" label={option} {...getTagProps({ index })} />
+                <Chip
+                  variant="outlined"
+                  label={option}
+                  {...getTagProps({ index })}
+                />
               ))
             }
             renderInput={(params) => (
@@ -402,7 +411,11 @@ export function BookDialog({
             disabled={bookSelected && genreSuggestionLoading}
             renderTags={(value, getTagProps) =>
               value.map((option, index) => (
-                <Chip variant="outlined" label={option} {...getTagProps({ index })} />
+                <Chip
+                  variant="outlined"
+                  label={option}
+                  {...getTagProps({ index })}
+                />
               ))
             }
             renderInput={(params) => (
