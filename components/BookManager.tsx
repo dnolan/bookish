@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Button, AppBar, Toolbar, Typography, Box } from '@mui/material';
-import { Book, BookFormData } from '@/lib/types';
+import { Book, BookDialogSubmit, BookFormData } from '@/lib/types';
 import { BookTable } from '@/components/BookTable';
 import { BookDialog } from '@/components/BookDialog';
 import { useBooks } from '@/hooks/useBooks';
@@ -10,7 +10,7 @@ import { useAuth } from '@/lib/authContext';
 
 export function BookManager() {
   const { user, logout } = useAuth();
-  const { books, loading: booksLoading, createBook, updateBook, deleteBook, fetchBooks } = useBooks();
+  const { books, loading: booksLoading, createBook, addExistingBookToCollection, updateBook, deleteBook, fetchBooks } = useBooks();
   const { authors, fetchAuthors } = useAuthors();
   const { genres, fetchGenres } = useGenres();
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -39,11 +39,13 @@ export function BookManager() {
     setCurrentBook(null);
   };
 
-  const handleSubmit = async (bookData: BookFormData) => {
-    if (currentBook) {
-      await updateBook(currentBook.id, bookData);
+  const handleSubmit = async (submission: BookDialogSubmit) => {
+    if ('existingBookId' in submission) {
+      await addExistingBookToCollection(submission.existingBookId);
+    } else if (currentBook) {
+      await updateBook(currentBook.id, submission as BookFormData);
     } else {
-      await createBook(bookData);
+      await createBook(submission as BookFormData);
     }
     await fetchAuthors(); // Refresh authors list
     await fetchGenres(); // Refresh genres list

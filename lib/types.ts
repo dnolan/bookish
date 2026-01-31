@@ -1,6 +1,5 @@
 type Book = {
   id: string;
-  userId: string;
   title: string;
   datePublished: string;
   dateAdded: string;
@@ -12,7 +11,13 @@ type Book = {
   isbn10?: string;
 }
 
-type BookFormData = Omit<Book, 'id' | 'userId'> & { id?: string };
+type BookFormData = Omit<Book, 'id'> & { id?: string };
+
+type BookCollectionSelection = {
+  existingBookId: string;
+};
+
+type BookDialogSubmit = BookFormData | BookCollectionSelection;
 
 type Author = {
   id: string;
@@ -34,4 +39,4 @@ type UserBookSummary = {
   dateAddedToReadingList: string; 
 }
 
-export type { Book, Author, User, UserBookSummary, BookFormData };
+export type { Book, Author, User, UserBookSummary, BookFormData, BookCollectionSelection, BookDialogSubmit };

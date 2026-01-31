@@ -10,7 +10,7 @@ import {
   Chip,
   CircularProgress,
 } from '@mui/material';
-import { Book, BookFormData } from '@/lib/types';
+import { Book, BookDialogSubmit, BookFormData } from '@/lib/types';
 
 interface BookDialogProps {
   open: boolean;
@@ -18,7 +18,7 @@ interface BookDialogProps {
   authors: string[];
   genres: string[];
   onClose: () => void;
-  onSubmit: (bookData: BookFormData) => Promise<void>;
+  onSubmit: (submission: BookDialogSubmit) => Promise<void>;
 }
 
 export function BookDialog({ 
@@ -43,12 +43,20 @@ export function BookDialog({
     coverUrl?: string | null;
   };
 
+  type CollectionResult = {
+    source: 'collection';
+    book: Book;
+  };
+
+  type SearchResult = OpenLibraryResult | CollectionResult;
+
   const [bookTitleInput, setBookTitleInput] = useState('');
-  const [bookTitleValue, setBookTitleValue] = useState<OpenLibraryResult | string | null>(null);
-  const [titleOptions, setTitleOptions] = useState<OpenLibraryResult[]>([]);
+  const [bookTitleValue, setBookTitleValue] = useState<SearchResult | string | null>(null);
+  const [titleOptions, setTitleOptions] = useState<SearchResult[]>([]);
   const [titleLoading, setTitleLoading] = useState(false);
   const [datePublishedValue, setDatePublishedValue] = useState('');
   const [selectedOpenLibraryKey, setSelectedOpenLibraryKey] = useState<string | null>(null);
+  const [selectedCollectionBookId, setSelectedCollectionBookId] = useState<string | null>(null);
   const [isbn10Value, setIsbn10Value] = useState('');
   const [isbn10Loading, setIsbn10Loading] = useState(false);
   const [selectedAuthors, setSelectedAuthors] = useState<string[]>([]);
@@ -65,6 +73,7 @@ export function BookDialog({
       setDatePublishedValue((book.datePublished as string) || '');
       setIsbn10Value(book.isbn10 || '');
       setSelectedOpenLibraryKey(null);
+      setSelectedCollectionBookId(book.id || null);
       setSelectedAuthors(book.authors || []);
       setSelectedGenres(book.genres || []);
       setBookSelected(false);
@@ -74,6 +83,7 @@ export function BookDialog({
       setDatePublishedValue('');
       setIsbn10Value('');
       setSelectedOpenLibraryKey(null);
+      setSelectedCollectionBookId(null);
       setSelectedAuthors([]);
       setSelectedGenres([]);
       setBookSelected(false);
@@ -97,6 +107,22 @@ export function BookDialog({
 
     const timer = setTimeout(async () => {
       try {
+        const collectionResponse = await fetch(`/api/books/search?q=${encodeURIComponent(query)}`, {
+          signal: controller.signal,
+        });
+        if (!collectionResponse.ok) {
+          throw new Error('Collection search request failed');
+        }
+        const collectionData = await collectionResponse.json();
+        const collectionResults = Array.isArray(collectionData?.results)
+          ? collectionData.results.map((result: Book) => ({ source: 'collection', book: result } as CollectionResult))
+          : [];
+
+        if (collectionResults.length > 0) {
+          setTitleOptions(collectionResults);
+          return;
+        }
+
         const response = await fetch(`/api/openlibrary/search?q=${encodeURIComponent(query)}` , {
           signal: controller.signal,
         });
@@ -208,7 +234,9 @@ export function BookDialog({
     const datePublished = formData.get('datePublished') as string;
 
     try {
-      if (isEditMode && book) {
+      if (!isEditMode && selectedCollectionBookId) {
+        await onSubmit({ existingBookId: selectedCollectionBookId });
+      } else if (isEditMode && book) {
         await onSubmit({
           id: book.id,
           title: bookName,
@@ -250,6 +278,7 @@ export function BookDialog({
     setTitleOptions([]);
     setDatePublishedValue('');
     setSelectedOpenLibraryKey(null);
+    setSelectedCollectionBookId(null);
     setIsbn10Value('');
     setSelectedAuthors([]);
     setSelectedGenres([]);
@@ -268,9 +297,13 @@ export function BookDialog({
             freeSolo
             options={titleOptions}
             filterOptions={(options) => options}
-            getOptionLabel={(option) =>
-              typeof option === 'string' ? option : option.title
-            }
+            getOptionLabel={(option) => {
+              if (typeof option === 'string') return option;
+              if ('source' in option && option.source === 'collection') {
+                return option.book.title;
+              }
+              return option.title;
+            }}
             value={bookTitleValue}
             inputValue={bookTitleInput}
             loading={titleLoading}
@@ -278,17 +311,34 @@ export function BookDialog({
               setBookTitleInput(newInputValue);
               if (!newInputValue) {
                 setBookTitleValue(null);
+                setSelectedCollectionBookId(null);
               }
             }}
             onChange={(_, newValue) => {
               setBookTitleValue(newValue);
+              setSelectedCollectionBookId(null);
               if (typeof newValue === 'string') {
                 setBookTitleInput(newValue);
                 setSelectedOpenLibraryKey(null);
                 setBookSelected(false);
                 return;
               }
-              if (newValue) {
+              if (!newValue) return;
+
+              if ('source' in newValue && newValue.source === 'collection') {
+                const selectedBook = newValue.book;
+                setBookTitleInput(selectedBook.title);
+                setSelectedAuthors(selectedBook.authors || []);
+                setSelectedGenres(selectedBook.genres || []);
+                setDatePublishedValue(selectedBook.datePublished || '');
+                setIsbn10Value(selectedBook.isbn10 || '');
+                setSelectedOpenLibraryKey(null);
+                setSelectedCollectionBookId(selectedBook.id);
+                setBookSelected(false);
+                return;
+              }
+
+              if ('title' in newValue) {
                 setBookTitleInput(newValue.title);
                 if (newValue.authors?.length) {
                   setSelectedAuthors(Array.from(new Set(newValue.authors)));
@@ -303,7 +353,18 @@ export function BookDialog({
             renderOption={(props, option) => (
               <li {...props}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  {option.coverUrl ? (
+                  {'source' in option && option.source === 'collection' ? (
+                    option.book.coverImageUrl ? (
+                      <img
+                        src={option.book.coverImageUrl}
+                        alt=""
+                        width={32}
+                        height={48}
+                        style={{ objectFit: 'cover', borderRadius: 4 }}
+                        loading="lazy"
+                      />
+                    ) : null
+                  ) : option.coverUrl ? (
                     <img
                       src={option.coverUrl}
                       alt=""
@@ -314,13 +375,28 @@ export function BookDialog({
                     />
                   ) : null}
                   <div>
-                    <div>{option.title}</div>
-                    {option.authors?.length ? (
-                      <div style={{ fontSize: 12, opacity: 0.7 }}>
-                        {option.authors.join(', ')}
-                        {option.firstPublishYear ? ` • ${option.firstPublishYear}` : ''}
-                      </div>
-                    ) : null}
+                    {'source' in option && option.source === 'collection' ? (
+                      <>
+                        <div>{option.book.title}</div>
+                        {option.book.authors?.length ? (
+                          <div style={{ fontSize: 12, opacity: 0.7 }}>
+                            {option.book.authors.join(', ')}
+                          </div>
+                        ) : null}
+                        <div style={{ fontSize: 11, opacity: 0.6 }}>In collection</div>
+                      </>
+                    ) : (
+                      <>
+                        <div>{option.title}</div>
+                        {option.authors?.length ? (
+                          <div style={{ fontSize: 12, opacity: 0.7 }}>
+                            {option.authors.join(', ')}
+                            {option.firstPublishYear ? ` • ${option.firstPublishYear}` : ''}
+                          </div>
+                        ) : null}
+                        <div style={{ fontSize: 11, opacity: 0.6 }}>Open Library</div>
+                      </>
+                    )}
                   </div>
                 </div>
               </li>
@@ -329,11 +405,11 @@ export function BookDialog({
               <TextField
                 {...params}
                 name="bookName"
-                label="Book Title"
+                label="Search for a book"
                 fullWidth
                 margin="normal"
                 required
-                helperText="Start typing to search Open Library"
+                helperText="Search your collection first, then Open Library"
                 InputProps={{
                   ...params.InputProps,
                   endAdornment: (

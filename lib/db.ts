@@ -1,11 +1,12 @@
 import { initializeApp } from "firebase/app";
 import { firebaseConfig } from "./firebase";
-import { getFirestore, collection, addDoc, getDoc, updateDoc, deleteDoc, doc, getDocs, query, where } from "firebase/firestore";
-import { Book, Author } from "./types.js";
+import { getFirestore, collection, addDoc, getDoc, updateDoc, deleteDoc, doc, getDocs, query, where, documentId } from "firebase/firestore";
+import { Book, Author, UserBookSummary } from "./types.js";
 const bookCollection = "books";
 const authorCollection = "authors";
 import defaultGenres from "./defaultGenres.json";
 const genreCollection = "genres";
+const userCollectionCollection = "userCollections";
 
  async function initDb() {
   const app = initializeApp(await firebaseConfig());
@@ -71,14 +72,61 @@ async function getBooks(): Promise<Book[]> {
   return books;
 }
 
-async function getBooksByUserId(userId: string): Promise<Book[]> {
+async function addBookToCollection(userId: string, bookId: string): Promise<string> {
   const db = await initDb();
-  const q = query(collection(db, bookCollection), where("userId", "==", userId));
+  const entry: UserBookSummary = {
+    userId,
+    bookId,
+    dateAddedToReadingList: new Date().toISOString(),
+  };
+
+  const docRef = await addDoc(collection(db, userCollectionCollection), entry);
+  return docRef.id;
+}
+
+async function removeBookFromCollection(userId: string, bookId: string): Promise<void> {
+  const db = await initDb();
+  const q = query(
+    collection(db, userCollectionCollection),
+    where("userId", "==", userId),
+    where("bookId", "==", bookId)
+  );
   const querySnapshot = await getDocs(q);
+  const deletions = querySnapshot.docs.map((docSnap) => deleteDoc(docSnap.ref));
+  await Promise.all(deletions);
+}
+
+async function getCollectionBookIds(userId: string): Promise<string[]> {
+  const db = await initDb();
+  const q = query(collection(db, userCollectionCollection), where("userId", "==", userId));
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs
+    .map((docSnap) => docSnap.data() as UserBookSummary)
+    .map((entry) => entry.bookId)
+    .filter(Boolean);
+}
+
+async function getBooksForUserCollection(userId: string): Promise<Book[]> {
+  const db = await initDb();
+  const bookIds = await getCollectionBookIds(userId);
+  if (bookIds.length === 0) {
+    return [];
+  }
+
   const books: Book[] = [];
-  querySnapshot.forEach((doc) => {
-    books.push({ ...doc.data() as Book, id: doc.id });
-  });
+  const chunks: string[][] = [];
+  for (let i = 0; i < bookIds.length; i += 10) {
+    chunks.push(bookIds.slice(i, i + 10));
+  }
+
+  for (const chunk of chunks) {
+    const q = query(collection(db, bookCollection), where(documentId(), "in", chunk));
+    const querySnapshot = await getDocs(q);
+    querySnapshot.forEach((docSnap) => {
+      books.push({ ...docSnap.data() as Book, id: docSnap.id });
+    });
+  }
+
   return books;
 }
 
@@ -207,4 +255,4 @@ async function addGenres(genreNames: string[]): Promise<void> {
   await Promise.all(promises.filter(Boolean));
 }
 
-export { addBook, getBook, updateBook, deleteBook, getBooks, getBooksByUserId, getAuthorNames, addAuthor, addAuthors, getGenreNames, addGenre, addGenres };
+export { addBook, getBook, updateBook, deleteBook, getBooks, addBookToCollection, removeBookFromCollection, getBooksForUserCollection, getAuthorNames, addAuthor, addAuthors, getGenreNames, addGenre, addGenres };

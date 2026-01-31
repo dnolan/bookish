@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Book, BookFormData } from '@/lib/types';
-import { addBook, updateBook, getBooks, getBooksByUserId, getAuthorNames } from '@/lib/db';
+import { addBook, updateBook, addBookToCollection, removeBookFromCollection, getBooksForUserCollection } from '@/lib/db';
 import { useAuth } from '@/lib/authContext';
 
 export function useBooks() {
@@ -15,7 +15,7 @@ export function useBooks() {
     setLoading(true);
     setError(null);
     try {
-      const fetchedBooks = await getBooksByUserId(user.uid);
+      const fetchedBooks = await getBooksForUserCollection(user.uid);
       setBooks(fetchedBooks);
     } catch (err) {
       setError('Failed to fetch books');
@@ -30,11 +30,24 @@ export function useBooks() {
     
     setError(null);
     try {
-      const bookWithUser = { ...bookData, userId: user.uid };
-      await addBook(bookWithUser);
+      const bookId = await addBook(bookData as Omit<Book, 'id'>);
+      await addBookToCollection(user.uid, bookId);
       await fetchBooks(); // Refresh the list
     } catch (err) {
       setError('Failed to add book');
+      throw err;
+    }
+  };
+
+  const addExistingBookToCollection = async (bookId: string) => {
+    if (!user?.uid) throw new Error('User not authenticated');
+
+    setError(null);
+    try {
+      await addBookToCollection(user.uid, bookId);
+      await fetchBooks();
+    } catch (err) {
+      setError('Failed to add book to collection');
       throw err;
     }
   };
@@ -53,8 +66,8 @@ export function useBooks() {
   const removeBook = async (id: string) => {
     setError(null);
     try {
-      const { deleteBook } = await import('@/lib/db');
-      await deleteBook(id);
+      if (!user?.uid) throw new Error('User not authenticated');
+      await removeBookFromCollection(user.uid, id);
       await fetchBooks(); // Refresh the list
     } catch (err) {
       setError('Failed to delete book');
@@ -68,6 +81,7 @@ export function useBooks() {
     error,
     fetchBooks,
     createBook,
+    addExistingBookToCollection,
     updateBook: updateBookData,
     deleteBook: removeBook,
   };
