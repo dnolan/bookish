@@ -9,6 +9,9 @@ import {
   Autocomplete,
   Chip,
   CircularProgress,
+  Rating,
+  FormControl,
+  FormLabel,
 } from '@mui/material';
 import { Book, BookDialogSubmit, BookFormData } from '@/lib/types';
 
@@ -64,6 +67,7 @@ export function BookDialog({
   const [genreSuggestionLoading, setGenreSuggestionLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [bookSelected, setBookSelected] = useState(false);
+  const [rating, setRating] = useState<number | null>(null);
   const isEditMode = !!book;
 
   useEffect(() => {
@@ -76,6 +80,7 @@ export function BookDialog({
       setSelectedCollectionBookId(book.id || null);
       setSelectedAuthors(book.authors || []);
       setSelectedGenres(book.genres || []);
+      setRating(book.rating ?? null);
       setBookSelected(false);
     } else {
       setBookTitleInput('');
@@ -86,6 +91,7 @@ export function BookDialog({
       setSelectedCollectionBookId(null);
       setSelectedAuthors([]);
       setSelectedGenres([]);
+      setRating(null);
       setBookSelected(false);
     }
   }, [book]);
@@ -235,7 +241,7 @@ export function BookDialog({
 
     try {
       if (!isEditMode && selectedCollectionBookId) {
-        await onSubmit({ existingBookId: selectedCollectionBookId });
+        await onSubmit({ existingBookId: selectedCollectionBookId, rating: rating ?? undefined });
       } else if (isEditMode && book) {
         await onSubmit({
           id: book.id,
@@ -244,6 +250,7 @@ export function BookDialog({
           authors: selectedAuthors,
           genres: selectedGenres,
           isbn10: isbn10Value,
+          rating: rating ?? undefined,
           // Keep existing values for other fields
           dateAdded: book.dateAdded,
           description: book.description,
@@ -257,6 +264,7 @@ export function BookDialog({
           authors: selectedAuthors,
           genres: selectedGenres,
           isbn10: isbn10Value,
+          rating: rating ?? undefined,
           dateAdded: new Date().toISOString(),
           description: '',
           coverImageUrl: '',
@@ -282,6 +290,7 @@ export function BookDialog({
     setIsbn10Value('');
     setSelectedAuthors([]);
     setSelectedGenres([]);
+    setRating(null);
     setBookSelected(false);
     onClose();
   };
@@ -505,6 +514,20 @@ export function BookDialog({
             )}
             sx={{ mt: 2 }}
           />
+
+          <FormControl margin="normal" fullWidth sx={{ mt: 2 }}>
+            <FormLabel>Rating</FormLabel>
+            <Rating
+              name="rating"
+              value={rating}
+              onChange={(_, newValue) => {
+                setRating(newValue);
+              }}
+              precision={0.5}
+              size="large"
+              sx={{ mt: 1 }}
+            />
+          </FormControl>
         </DialogContent>
         <DialogActions>
           <Button onClick={handleClose} disabled={loading || genreSuggestionLoading}>

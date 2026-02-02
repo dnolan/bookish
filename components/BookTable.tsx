@@ -8,6 +8,7 @@ import {
   TableRow,
   Button,
   Chip,
+  Rating,
 } from '@mui/material';
 import { Book } from '@/lib/types';
 
@@ -54,6 +55,7 @@ export function BookTable({ books, onEdit, onDelete, loading }: BookTableProps) 
           <TableRow>
             <TableCell>Title</TableCell>
             <TableCell>Cover</TableCell>
+            <TableCell>Rating</TableCell>
             <TableCell>Authors</TableCell>
             <TableCell>Genres</TableCell>
             <TableCell>Date Added</TableCell>
@@ -77,6 +79,9 @@ export function BookTable({ books, onEdit, onDelete, loading }: BookTableProps) 
                 ) : (
                   <em>No cover</em>
                 )}
+              </TableCell>
+              <TableCell>
+                <Rating value={book.rating ?? 0} readOnly size="small" />
               </TableCell>
               <TableCell>
                 {book.authors && book.authors.length > 0 ? (

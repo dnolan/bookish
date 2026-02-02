@@ -72,12 +72,13 @@ async function getBooks(): Promise<Book[]> {
   return books;
 }
 
-async function addBookToCollection(userId: string, bookId: string): Promise<string> {
+async function addBookToCollection(userId: string, bookId: string, rating?: number): Promise<string> {
   const db = await initDb();
   const entry: UserBookSummary = {
     userId,
     bookId,
     dateAddedToReadingList: new Date().toISOString(),
+    ...(rating !== undefined && { rating }),
   };
 
   const docRef = await addDoc(collection(db, userCollectionCollection), entry);
@@ -96,6 +97,25 @@ async function removeBookFromCollection(userId: string, bookId: string): Promise
   await Promise.all(deletions);
 }
 
+async function updateUserBookRating(userId: string, bookId: string, rating?: number): Promise<void> {
+  const db = await initDb();
+  const q = query(
+    collection(db, userCollectionCollection),
+    where("userId", "==", userId),
+    where("bookId", "==", bookId)
+  );
+  const querySnapshot = await getDocs(q);
+  
+  if (querySnapshot.empty) {
+    throw new Error('Book not found in user collection');
+  }
+  
+  const updates = querySnapshot.docs.map((docSnap) => 
+    updateDoc(docSnap.ref, { rating: rating ?? null })
+  );
+  await Promise.all(updates);
+}
+
 async function getCollectionBookIds(userId: string): Promise<string[]> {
   const db = await initDb();
   const q = query(collection(db, userCollectionCollection), where("userId", "==", userId));
@@ -108,7 +128,18 @@ async function getCollectionBookIds(userId: string): Promise<string[]> {
 
 async function getBooksForUserCollection(userId: string): Promise<Book[]> {
   const db = await initDb();
-  const bookIds = await getCollectionBookIds(userId);
+  
+  // Get all user book entries with ratings
+  const q = query(collection(db, userCollectionCollection), where("userId", "==", userId));
+  const userBooksSnapshot = await getDocs(q);
+  const userBookMap = new Map<string, UserBookSummary>();
+  
+  userBooksSnapshot.forEach((docSnap) => {
+    const entry = docSnap.data() as UserBookSummary;
+    userBookMap.set(entry.bookId, entry);
+  });
+  
+  const bookIds = Array.from(userBookMap.keys());
   if (bookIds.length === 0) {
     return [];
   }
@@ -123,7 +154,13 @@ async function getBooksForUserCollection(userId: string): Promise<Book[]> {
     const q = query(collection(db, bookCollection), where(documentId(), "in", chunk));
     const querySnapshot = await getDocs(q);
     querySnapshot.forEach((docSnap) => {
-      books.push({ ...docSnap.data() as Book, id: docSnap.id });
+      const bookData = docSnap.data() as Book;
+      const userBook = userBookMap.get(docSnap.id);
+      books.push({ 
+        ...bookData, 
+        id: docSnap.id,
+        rating: userBook?.rating 
+      });
     });
   }
 
@@ -255,4 +292,4 @@ async function addGenres(genreNames: string[]): Promise<void> {
   await Promise.all(promises.filter(Boolean));
 }
 
-export { addBook, getBook, updateBook, deleteBook, getBooks, addBookToCollection, removeBookFromCollection, getBooksForUserCollection, getAuthorNames, addAuthor, addAuthors, getGenreNames, addGenre, addGenres };
+export { addBook, getBook, updateBook, deleteBook, getBooks, addBookToCollection, removeBookFromCollection, getBooksForUserCollection, updateUserBookRating, getAuthorNames, addAuthor, addAuthors, getGenreNames, addGenre, addGenres };

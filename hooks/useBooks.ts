@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Book, BookFormData } from '@/lib/types';
-import { addBook, updateBook, addBookToCollection, removeBookFromCollection, getBooksForUserCollection } from '@/lib/db';
+import { addBook, updateBook, addBookToCollection, removeBookFromCollection, getBooksForUserCollection, updateUserBookRating } from '@/lib/db';
 import { useAuth } from '@/lib/authContext';
 
 export function useBooks() {
@@ -30,8 +30,9 @@ export function useBooks() {
     
     setError(null);
     try {
-      const bookId = await addBook(bookData as Omit<Book, 'id'>);
-      await addBookToCollection(user.uid, bookId);
+      const { rating, ...bookDataWithoutRating } = bookData;
+      const bookId = await addBook(bookDataWithoutRating as Omit<Book, 'id'>);
+      await addBookToCollection(user.uid, bookId, rating);
       await fetchBooks(); // Refresh the list
     } catch (err) {
       setError('Failed to add book');
@@ -39,12 +40,12 @@ export function useBooks() {
     }
   };
 
-  const addExistingBookToCollection = async (bookId: string) => {
+  const addExistingBookToCollection = async (bookId: string, rating?: number) => {
     if (!user?.uid) throw new Error('User not authenticated');
 
     setError(null);
     try {
-      await addBookToCollection(user.uid, bookId);
+      await addBookToCollection(user.uid, bookId, rating);
       await fetchBooks();
     } catch (err) {
       setError('Failed to add book to collection');
@@ -53,9 +54,22 @@ export function useBooks() {
   };
 
   const updateBookData = async (id: string, bookData: Partial<Book>) => {
+    if (!user?.uid) throw new Error('User not authenticated');
+    
     setError(null);
     try {
-      await updateBook(id, bookData);
+      const { rating, ...bookDataWithoutRating } = bookData;
+      
+      // Update the book data (without rating)
+      if (Object.keys(bookDataWithoutRating).length > 0) {
+        await updateBook(id, bookDataWithoutRating);
+      }
+      
+      // Update the rating in user collection
+      if (rating !== undefined) {
+        await updateUserBookRating(user.uid, id, rating);
+      }
+      
       await fetchBooks(); // Refresh the list
     } catch (err) {
       setError('Failed to update book');

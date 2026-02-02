@@ -9,12 +9,14 @@ type Book = {
   coverImageUrl: string;
   pageCount: number;
   isbn10?: string;
+  rating?: number;
 }
 
 type BookFormData = Omit<Book, 'id'> & { id?: string };
 
 type BookCollectionSelection = {
   existingBookId: string;
+  rating?: number;
 };
 
 type BookDialogSubmit = BookFormData | BookCollectionSelection;
@@ -36,7 +38,8 @@ type User = {
 type UserBookSummary = {
   userId: string;
   bookId: string;
-  dateAddedToReadingList: string; 
+  dateAddedToReadingList: string;
+  rating?: number;
 }
 
 export type { Book, Author, User, UserBookSummary, BookFormData, BookCollectionSelection, BookDialogSubmit };

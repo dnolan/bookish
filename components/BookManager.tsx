@@ -41,7 +41,7 @@ export function BookManager() {
 
   const handleSubmit = async (submission: BookDialogSubmit) => {
     if ('existingBookId' in submission) {
-      await addExistingBookToCollection(submission.existingBookId);
+      await addExistingBookToCollection(submission.existingBookId, submission.rating);
     } else if (currentBook) {
       await updateBook(currentBook.id, submission as BookFormData);
     } else {
