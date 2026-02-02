@@ -13,6 +13,7 @@ import {
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
+  sendPasswordResetEmail,
 } from 'firebase/auth';
 import { getAuth } from 'firebase/auth';
 import { initializeApp } from 'firebase/app';
@@ -28,10 +29,13 @@ export function AuthForm({ onAuthSuccess }: AuthFormProps) {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [showResetPassword, setShowResetPassword] = useState(false);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setSuccessMessage(null);
     setLoading(true);
 
     try {
@@ -61,6 +65,33 @@ export function AuthForm({ onAuthSuccess }: AuthFormProps) {
     }
   };
 
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSuccessMessage(null);
+    setLoading(true);
+
+    try {
+      const config = await firebaseConfig();
+      const app = initializeApp(config);
+      const auth = getAuth(app);
+
+      await sendPasswordResetEmail(auth, email);
+      setSuccessMessage('Password reset email sent! Check your inbox.');
+      setEmail('');
+    } catch (err: unknown) {
+      const errorMessage =
+        err instanceof Error
+          ? err.message
+          : typeof err === 'string'
+            ? err
+            : 'Failed to send reset email';
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <Container maxWidth="sm">
       <Box
@@ -83,18 +114,27 @@ export function AuthForm({ onAuthSuccess }: AuthFormProps) {
             Bookish
           </Typography>
 
-          <Tabs
-            value={mode}
-            onChange={(_, newValue) => {
-              setMode(newValue);
-              setError(null);
-            }}
-            variant="fullWidth"
-            sx={{ mb: 3 }}
-          >
-            <Tab label="Login" value="login" />
-            <Tab label="Register" value="register" />
-          </Tabs>
+          {!showResetPassword && (
+            <Tabs
+              value={mode}
+              onChange={(_, newValue) => {
+                setMode(newValue);
+                setError(null);
+                setSuccessMessage(null);
+              }}
+              variant="fullWidth"
+              sx={{ mb: 3 }}
+            >
+              <Tab label="Login" value="login" />
+              <Tab label="Register" value="register" />
+            </Tabs>
+          )}
+
+          {showResetPassword && (
+            <Typography variant="h6" align="center" sx={{ mb: 3 }}>
+              Reset Password
+            </Typography>
+          )}
 
           {error && (
             <Alert severity="error" sx={{ mb: 2 }}>
@@ -102,43 +142,105 @@ export function AuthForm({ onAuthSuccess }: AuthFormProps) {
             </Alert>
           )}
 
-          <form onSubmit={handleAuth}>
-            <TextField
-              fullWidth
-              label="Email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              margin="normal"
-              required
-              disabled={loading}
-            />
-            <TextField
-              fullWidth
-              label="Password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              margin="normal"
-              required
-              disabled={loading}
-            />
-            <Button
-              fullWidth
-              variant="contained"
-              type="submit"
-              sx={{ mt: 3 }}
-              disabled={loading}
-            >
-              {loading ? 'Loading...' : mode === 'login' ? 'Login' : 'Register'}
-            </Button>
-          </form>
+          {successMessage && (
+            <Alert severity="success" sx={{ mb: 2 }}>
+              {successMessage}
+            </Alert>
+          )}
 
-          <Typography variant="body2" color="textSecondary" align="center" sx={{ mt: 2 }}>
-            {mode === 'login'
-              ? "Don't have an account? Switch to Register"
-              : 'Already have an account? Switch to Login'}
-          </Typography>
+          {showResetPassword ? (
+            <form onSubmit={handleResetPassword}>
+              <TextField
+                fullWidth
+                label="Email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                margin="normal"
+                required
+                disabled={loading}
+              />
+              <Button
+                fullWidth
+                variant="contained"
+                type="submit"
+                sx={{ mt: 3 }}
+                disabled={loading}
+              >
+                {loading ? 'Sending...' : 'Send Reset Email'}
+              </Button>
+              <Button
+                fullWidth
+                variant="text"
+                sx={{ mt: 2 }}
+                onClick={() => {
+                  setShowResetPassword(false);
+                  setError(null);
+                  setSuccessMessage(null);
+                  setEmail('');
+                }}
+                disabled={loading}
+              >
+                Back to Login
+              </Button>
+            </form>
+          ) : (
+            <>
+              <form onSubmit={handleAuth}>
+                <TextField
+                  fullWidth
+                  label="Email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  margin="normal"
+                  required
+                  disabled={loading}
+                />
+                <TextField
+                  fullWidth
+                  label="Password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  margin="normal"
+                  required
+                  disabled={loading}
+                />
+                <Button
+                  fullWidth
+                  variant="contained"
+                  type="submit"
+                  sx={{ mt: 3 }}
+                  disabled={loading}
+                >
+                  {loading ? 'Loading...' : mode === 'login' ? 'Login' : 'Register'}
+                </Button>
+              </form>
+
+              {mode === 'login' && (
+                <Button
+                  fullWidth
+                  variant="text"
+                  sx={{ mt: 2 }}
+                  onClick={() => {
+                    setShowResetPassword(true);
+                    setError(null);
+                    setSuccessMessage(null);
+                  }}
+                  disabled={loading}
+                >
+                  Forgot Password?
+                </Button>
+              )}
+
+              <Typography variant="body2" color="textSecondary" align="center" sx={{ mt: 2 }}>
+                {mode === 'login'
+                  ? "Don't have an account? Switch to Register"
+                  : 'Already have an account? Switch to Login'}
+              </Typography>
+            </>
+          )}
         </Paper>
       </Box>
     </Container>
